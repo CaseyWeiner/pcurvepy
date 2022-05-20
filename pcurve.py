@@ -4,12 +4,13 @@ from sklearn.decomposition import PCA
 from scipy.interpolate import UnivariateSpline
 
 class PrincipalCurve:
-    def __init__(self, k = 3):
+    def __init__(self, k = 3, s_factor = 1):
         self.k = k
         self.p = None
         self.s = None
         self.p_interp = None
         self.s_interp = None
+        self.s_factor = s_factor
         
     def project(self, X, p, s):
         '''
@@ -81,14 +82,26 @@ class PrincipalCurve:
             d_sq_old = d_sq
             
             order = np.argsort(s_interp)
-            # s_interp = s_interp[order]
-            # X = X[order, :]
+            s_interp = s_interp[order]
+            X = X[order, :]
 
-            spline = [UnivariateSpline(s_interp[order], X[order, j], k = self.k, w = w) for j in range(0, X.shape[1])]
+            s_interp, idx_keep = np.unique(s_interp, return_index=True)
+
+            s_in = len(s_interp) * self.s_factor
+
+            try: #Sometimes s_interp is never unique, in which case we stop
+
+                spline = [
+                    UnivariateSpline(s_interp, X[idx_keep, j], s=s_in, k=self.k, w=w)
+                    for j in range(0, X.shape[1])
+                ]  # Alter k, s | [order], [order, j]
+
+            except:
+                break
 
             p = np.zeros((len(s_interp), X.shape[1]))
             for j in range(0, X.shape[1]):
-                p[:, j] = spline[j](s_interp[order])
+                p[:, j] = spline[j](s_interp)
 
             idx = [i for i in range(0, p.shape[0]-1) if (p[i] != p[i+1]).any()]
             p = p[idx, :]
