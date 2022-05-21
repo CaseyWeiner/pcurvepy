@@ -1,1 +1,1 @@
-import pcurve.pcurve
+from pcurve.pcurve import *
